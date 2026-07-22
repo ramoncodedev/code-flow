@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: codeflow
+          POSTGRES_USER: codeflow
+          POSTGRES_PASSWORD: codeflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U codeflow -d codeflow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/codeflow
+      SPRING_DATASOURCE_USERNAME: codeflow
+      SPRING_DATASOURCE_PASSWORD: codeflow
+      JWT_SECRET: ci-test-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Make mvnw executable
+        run: chmod +x mvnw
+
+      - name: Build and test
+        run: ./mvnw --batch-mode --no-transfer-progress verify
