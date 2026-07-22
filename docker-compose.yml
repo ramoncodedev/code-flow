@@ -1,0 +1,41 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: codeflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       codeflow
+      POSTGRES_USER:     codeflow
+      POSTGRES_PASSWORD: codeflow
+    ports:
+      - "5443:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codeflow -d codeflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: codeflow-api
+    restart: unless-stopped
+    ports:
+      - "3010:3010"
+    environment:
+      SPRING_DATASOURCE_URL:      jdbc:postgresql://postgres:5443/codeflow
+      SPRING_DATASOURCE_USERNAME: codeflow
+      SPRING_DATASOURCE_PASSWORD: codeflow
+      JWT_SECRET:        change-me-in-production
+      PORT:              3010
+      FRONTEND_ORIGIN:   http://localhost:3011
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
